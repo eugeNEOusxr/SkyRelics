@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyRelics - 3D Asset Browser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        #header {
+            padding: 1rem 2rem;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 2rem;
+        }
+
+        #searchBar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        input, select, button {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
+        }
+
+        input {
+            width: 300px;
+            background: rgba(255,255,255,0.9);
+        }
+
+        select {
+            background: rgba(255,255,255,0.9);
+        }
+
+        button {
+            background: #ff6b35;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        #gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .model-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .model-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .model-preview {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .model-info {
+            padding: 1rem;
+        }
+
+        .model-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .model-stats {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+        }
+
+        .model-tags {
+            margin-top: 0.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+
+        .tag {
+            background: rgba(255,255,255,0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .download-btn {
+            width: 100%;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: #4CAF50;
+        }
+
+        #loading {
+            text-align: center;
+            padding: 3rem;
+            font-size: 1.5rem;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .close-btn {
+            float: right;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+
+        #viewer3d {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .category-filter {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 2rem;
+            overflow-x: auto;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .category-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+
+        .category-btn:hover, .category-btn.active {
+            background: rgba(255,255,255,0.4);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🌤️ SkyRelics Asset Browser</h1>
+        <div id="searchBar">
+            <input type="text" id="searchInput" placeholder="Search models..." value="weapon">
+            <select id="categorySelect">
+                <option value="">All Categories</option>
+                <option value="weapons">Weapons</option>
+                <option value="characters">Characters</option>
+                <option value="vehicles">Vehicles</option>
+                <option value="buildings">Buildings</option>
+                <option value="props">Props</option>
+                <option value="nature">Nature</option>
+                <option value="sci-fi">Sci-Fi</option>
+                <option value="fantasy">Fantasy</option>
+            </select>
+            <button onclick="searchModels()">Search</button>
+        </div>
+    </div>
+
+    <div class="category-filter" id="categoryFilter">
+        <!-- Categories populated by JS -->
+    </div>
+
+    <div id="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading amazing 3D models...</p>
+    </div>
+
+    <div id="gallery"></div>
+
+    <div id="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <div id="viewer3d"></div>
+            <div id="modalDetails"></div>
+            <button class="download-btn" onclick="downloadModel()">Download Model</button>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'c458ccee30163a6e461cdb5ab1a03be2';
+        const API_BASE = 'https://api.sketchfab.com/v3';
+        
+        let currentModels = [];
+        let selectedModel = null;
+
+        const categories = ['weapons', 'characters', 'vehicles', 'buildings', 'props', 'nature', 'sci-fi', 'fantasy'];
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            initCategoryFilter();
+            searchModels();
+        });
+
+        function initCategoryFilter() {
+            const filter = document.getElementById('categoryFilter');
+            
+            categories.forEach(cat => {
+                const btn = document.createElement('div');
+                btn.className = 'category-btn';
+                btn.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+                btn.onclick = () => {
+                    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.getElementById('categorySelect').value = cat;
+                    searchModels();
+                };
+                filter.appendChild(btn);
+            });
+        }
+
+        async function searchModels() {
+            const query = document.getElementById('searchInput').value;
+            const category = document.getElementById('categorySelect').value;
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('gallery').innerHTML = '';
+
+            let url = `${API_BASE}/models?downloadable=true&count=50`;
+            
+            if (query) {
+                url += `&q=${encodeURIComponent(query)}`;
+            }
+            
+            if (category) {
+                url += `&categories=${encodeURIComponent(category)}`;
+            }
+
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Token ${API_KEY}`
+                    }
+                });
+
+                const data = await response.json();
+                currentModels = data.results || [];
+                
+                document.getElementById('loading').style.display = 'none';
+                displayModels(currentModels);
+                
+                console.log(`✓ Loaded ${currentModels.length} models`);
+            } catch (error) {
+                console.error('❌ Error fetching models:', error);
+                document.getElementById('loading').innerHTML = '<p>Error loading models. Please try again.</p>';
+            }
+        }
+
+        function displayModels(models) {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            models.forEach(model => {
+                const card = createModelCard(model);
+                gallery.appendChild(card);
+            });
+        }
+
+        function createModelCard(model) {
+            const card = document.createElement('div');
+            card.className = 'model-card';
+            card.onclick = () => openModal(model);
+
+            const thumbnail = model.thumbnails?.images?.[0]?.url || '';
+            const name = model.name || 'Untitled';
+            const vertexCount = model.vertexCount?.toLocaleString() || 'N/A';
+            const faceCount = model.faceCount?.toLocaleString() || 'N/A';
+            const license = model.license?.label || 'Unknown';
+            const tags = model.tags?.slice(0, 3) || [];
+
+            card.innerHTML = `
+                <img src="${thumbnail}" alt="${name}" class="model-preview" loading="lazy">
+                <div class="model-info">
+                    <div class="model-name">${name}</div>
+                    <div class="model-stats">
+                        <span>🔺 ${vertexCount}v</span>
+                        <span>📐 ${faceCount}f</span>
+                    </div>
+                    <div class="model-tags">
+                        ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
+                        📜 ${license}
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function openModal(model) {
+            selectedModel = model;
+            
+            document.getElementById('modalTitle').textContent = model.name;
+            document.getElementById('modalDetails').innerHTML = `
+                <p><strong>Vertices:</strong> ${model.vertexCount?.toLocaleString()}</p>
+                <p><strong>Faces:</strong> ${model.faceCount?.toLocaleString()}</p>
+                <p><strong>License:</strong> ${model.license?.label}</p>
+                <p><strong>Tags:</strong> ${model.tags?.join(', ')}</p>
+                <p><strong>Description:</strong> ${model.description || 'No description'}</p>
+            `;
+
+            // Embed Sketchfab viewer
+            const viewer = document.getElementById('viewer3d');
+            viewer.innerHTML = `
+                <iframe 
+                    src="https://sketchfab.com/models/${model.uid}/embed?autostart=1&ui_theme=dark" 
+                    width="100%" 
+                    height="100%" 
+                    frameborder="0" 
+                    allowfullscreen 
+                    mozallowfullscreen="true" 
+                    webkitallowfullscreen="true">
+                </iframe>
+            `;
+
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            selectedModel = null;
+        }
+
+        async function downloadModel() {
+            if (!selectedModel) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/models/${selectedModel.uid}/download`, {
+                    headers: {
+                        'Authorization': `Token ${API_KEY}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.gltf?.url) {
+                    window.open(data.gltf.url, '_blank');
+                    alert('✓ Download started! Model will open in new tab.');
+                } else {
+                    alert('❌ Download not available for this model.');
+                }
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('❌ Failed to download model. Check console for details.');
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Enter' && document.activeElement.id === 'searchInput') searchModels();
+        });
+    </script>
+</body>
+</html>
