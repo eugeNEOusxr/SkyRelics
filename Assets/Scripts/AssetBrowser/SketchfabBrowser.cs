@@ -13,7 +13,7 @@ namespace SkyRelics.AssetBrowser
     public class SketchfabBrowser : MonoBehaviour
     {
         [Header("API Settings")]
-        public string sketchfabApiKey = ""; // Get free key at sketchfab.com/developers
+        public string sketchfabApiKey = "c458ccee30163a6e461cdb5ab1a03be2"; // Get free key at sketchfab.com/developers
         private const string API_BASE = "https://api.sketchfab.com/v3";
         
         [Header("Search Settings")]
