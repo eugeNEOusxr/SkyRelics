@@ -303,7 +303,7 @@
             document.getElementById('loading').style.display = 'block';
             document.getElementById('gallery').innerHTML = '';
 
-            let url = `${API_BASE}/models?downloadable=true&count=50`;
+            let url = `${API_BASE}/models?downloadable=true&count=100`; // Increased to 100
             
             if (query) {
                 url += `&q=${encodeURIComponent(query)}`;
@@ -312,6 +312,10 @@
             if (category) {
                 url += `&categories=${encodeURIComponent(category)}`;
             }
+
+            // Add sorting and quality filters
+            url += '&sort_by=-likeCount'; // Most liked first
+            url += '&animated=false'; // Static models only (easier to import)
 
             try {
                 const response = await fetch(url, {
@@ -323,10 +327,16 @@
                 const data = await response.json();
                 currentModels = data.results || [];
                 
+                // Filter by vertex count (game-ready models: 500-50k vertices)
+                currentModels = currentModels.filter(model => {
+                    const verts = model.vertexCount || 0;
+                    return verts >= 500 && verts <= 50000;
+                });
+                
                 document.getElementById('loading').style.display = 'none';
                 displayModels(currentModels);
                 
-                console.log(`✓ Loaded ${currentModels.length} models`);
+                console.log(`✓ Loaded ${currentModels.length} game-ready models`);
             } catch (error) {
                 console.error('❌ Error fetching models:', error);
                 document.getElementById('loading').innerHTML = '<p>Error loading models. Please try again.</p>';
